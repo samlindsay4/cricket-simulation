@@ -15,6 +15,7 @@ class BattingStats:
     matches: int = 0
     innings: int = 0
     runs: int = 0
+    not_outs: int = 0
     highest_score: int = 0
     average: float = 0.0
     strike_rate: float = 0.0
@@ -23,10 +24,10 @@ class BattingStats:
     fours: int = 0
     sixes: int = 0
     
-    def update_average(self, not_outs: int = 0) -> None:
+    def update_average(self) -> None:
         """Calculate and update batting average."""
-        if self.innings - not_outs > 0:
-            self.average = self.runs / (self.innings - not_outs)
+        if self.innings - self.not_outs > 0:
+            self.average = self.runs / (self.innings - self.not_outs)
         else:
             self.average = 0.0
 
@@ -50,7 +51,7 @@ class BowlingStats:
         """Calculate and update bowling statistics."""
         if self.wickets > 0:
             self.average = self.runs_conceded / self.wickets
-            self.strike_rate = (self.overs * 6) / self.wickets if self.wickets > 0 else 0.0
+            self.strike_rate = (self.overs * 6) / self.wickets
         else:
             self.average = 0.0
             self.strike_rate = 0.0
