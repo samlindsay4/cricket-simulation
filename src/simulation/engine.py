@@ -12,6 +12,11 @@ from ..models.team import Team
 from ..models.match import Match, MatchFormat, MatchStatus, InningsData
 
 
+# Probability constants
+EXTRAS_PROBABILITY = 0.05  # 5% chance of extras (wide/no-ball) per ball
+WIDE_PROBABILITY = 0.7  # 70% of extras are wides, 30% no-balls
+
+
 class BallResult:
     """Result of a single ball."""
     
@@ -72,9 +77,9 @@ class SimulationEngine:
         Returns:
             BallResult object with outcome
         """
-        # Small chance of extras (5%)
-        if random.random() < 0.05:
-            extra_type = "wide" if random.random() < 0.7 else "no-ball"
+        # Small chance of extras
+        if random.random() < EXTRAS_PROBABILITY:
+            extra_type = "wide" if random.random() < WIDE_PROBABILITY else "no-ball"
             runs = 1 if extra_type == "wide" else (1 + random.randint(0, 1))
             return BallResult(runs, False, True, extra_type, batsman, bowler)
         

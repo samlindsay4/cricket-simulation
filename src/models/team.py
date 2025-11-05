@@ -8,6 +8,10 @@ from typing import List, Optional
 from .player import Player
 
 
+# Cricket constants
+MAX_PLAYING_XI = 11  # Maximum players in a playing XI
+
+
 class Team:
     """
     Represents a cricket team with player roster management.
@@ -52,9 +56,8 @@ class Team:
         Returns:
             True if player was added, False if roster is full
         """
-        # For playing XI, limit to 11 players
-        playing_xi_limit = 11
-        if len(self.players) >= playing_xi_limit:
+        # For playing XI, limit to maximum allowed
+        if len(self.players) >= MAX_PLAYING_XI:
             return False
         
         self.players.append(player)

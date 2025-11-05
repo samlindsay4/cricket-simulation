@@ -9,6 +9,31 @@ from dataclasses import dataclass, field
 import random
 
 
+# Probability calculation constants
+BASE_DISMISSAL_PROBABILITY = 0.025  # 2.5% base dismissal chance per ball
+MIN_DISMISSAL_PROBABILITY = 0.005  # 0.5% minimum dismissal chance
+MAX_DISMISSAL_PROBABILITY = 0.08   # 8% maximum dismissal chance
+
+# Batting average factors for dismissal calculation
+BATTING_AVERAGE_BASELINE = 37.5  # Average batting average for factor calculation
+MIN_BATTING_AVERAGE = 15.0       # Minimum average to prevent extreme factors
+
+# Bowling average factors for dismissal calculation
+BOWLING_AVERAGE_BASELINE = 30.0  # Average bowling average for factor calculation
+MIN_BOWLING_AVERAGE = 20.0       # Minimum average to prevent extreme factors
+
+# Scoring probability constants
+MIN_DOT_PROBABILITY = 0.35  # Minimum dot ball probability
+MAX_DOT_PROBABILITY = 0.55  # Maximum dot ball probability
+SINGLE_PROBABILITY = 0.30   # Base probability for singles
+TWO_PROBABILITY = 0.10      # Base probability for twos
+THREE_PROBABILITY = 0.02    # Base probability for threes
+MIN_FOUR_PROBABILITY = 0.05  # Minimum four probability
+MAX_FOUR_PROBABILITY = 0.15  # Maximum four probability
+MIN_SIX_PROBABILITY = 0.02   # Minimum six probability
+MAX_SIX_PROBABILITY = 0.10   # Maximum six probability
+
+
 @dataclass
 class BattingStats:
     """Player batting statistics."""
@@ -156,25 +181,22 @@ class Player:
         Returns:
             Probability of dismissal (0.0 to 1.0)
         """
-        # Base dismissal probability (about 2.5% per ball)
-        base_prob = 0.025
-        
         # Better average = lower dismissal chance
         # Average 50 = 0.8x base, Average 25 = 1.2x base
-        batting_factor = 37.5 / max(self.batting_stats.average, 15.0)
+        batting_factor = BATTING_AVERAGE_BASELINE / max(self.batting_stats.average, MIN_BATTING_AVERAGE)
         
         # If bowler stats available, factor them in
         bowler_factor = 1.0
         if bowler and bowler.bowling_stats.average > 0:
             # Better bowler (lower average) = higher dismissal chance
             # Bowling avg 25 = 1.2x, Bowling avg 35 = 0.8x
-            bowler_factor = 30.0 / max(bowler.bowling_stats.average, 20.0)
+            bowler_factor = BOWLING_AVERAGE_BASELINE / max(bowler.bowling_stats.average, MIN_BOWLING_AVERAGE)
         
         # Combined probability
-        prob = base_prob * batting_factor * bowler_factor
+        prob = BASE_DISMISSAL_PROBABILITY * batting_factor * bowler_factor
         
-        # Cap between 0.5% and 8%
-        return max(0.005, min(0.08, prob))
+        # Cap between min and max
+        return max(MIN_DISMISSAL_PROBABILITY, min(MAX_DISMISSAL_PROBABILITY, prob))
     
     def calculate_scoring_probabilities(self, bowler: Optional['Player'] = None) -> dict:
         """
@@ -203,20 +225,20 @@ class Player:
         
         # Base probabilities for different outcomes
         # Dots should be ~40-50% of deliveries
-        dot_prob = max(0.35, 0.55 - (aggression * 0.15))
+        dot_prob = max(MIN_DOT_PROBABILITY, MAX_DOT_PROBABILITY - (aggression * 0.15))
         
         # Singles are most common scoring shot
-        single_prob = 0.30
+        single_prob = SINGLE_PROBABILITY
         
         # Twos depend on running ability
-        two_prob = 0.10
+        two_prob = TWO_PROBABILITY
         
         # Threes are rare
-        three_prob = 0.02
+        three_prob = THREE_PROBABILITY
         
         # Boundaries based on aggression
-        four_prob = min(0.15, 0.05 + (aggression * 0.08))
-        six_prob = min(0.10, 0.02 + (aggression * 0.06))
+        four_prob = min(MAX_FOUR_PROBABILITY, MIN_FOUR_PROBABILITY + (aggression * 0.08))
+        six_prob = min(MAX_SIX_PROBABILITY, MIN_SIX_PROBABILITY + (aggression * 0.06))
         
         # Normalize to ensure they sum to 1.0
         total = dot_prob + single_prob + two_prob + three_prob + four_prob + six_prob
