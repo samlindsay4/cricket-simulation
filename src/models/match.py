@@ -4,10 +4,11 @@ Match model for cricket simulation.
 This module defines the Match class for holding game context.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple, Any
 from datetime import datetime
 from enum import Enum
 from .team import Team
+from .player import Player
 
 
 class MatchFormat(Enum):
@@ -27,6 +28,27 @@ class MatchStatus(Enum):
     ABANDONED = "Abandoned"
 
 
+class InningsData:
+    """Data structure to track innings information."""
+    
+    def __init__(self):
+        self.score: int = 0
+        self.wickets: int = 0
+        self.overs: int = 0
+        self.balls: int = 0
+        self.extras: int = 0
+        self.batting_scores: Dict[str, int] = {}  # player_id -> runs
+        self.batting_balls: Dict[str, int] = {}   # player_id -> balls faced
+        self.bowling_figures: Dict[str, Dict[str, int]] = {}  # player_id -> {overs, runs, wickets}
+        self.fall_of_wickets: List[Tuple[int, int, str]] = []  # (score, wickets, batsman_name)
+        self.partnerships: List[Dict[str, Any]] = []
+        self.ball_by_ball: List[Dict[str, Any]] = []
+        
+    def get_overs_float(self) -> float:
+        """Get overs in decimal format (e.g., 19.4 for 19 overs 4 balls)."""
+        return self.overs + (self.balls / 10.0)
+
+
 class Match:
     """
     Represents a cricket match between two teams.
@@ -43,6 +65,12 @@ class Match:
         status: Current match status
         winner: Winning team (optional)
         result_text: Description of match result
+        innings1: First innings data
+        innings2: Second innings data
+        current_batsman_1: Currently batting (striker)
+        current_batsman_2: Currently batting (non-striker)
+        current_bowler: Currently bowling
+        player_of_match: Player of the match
     """
     
     def __init__(
@@ -78,7 +106,17 @@ class Match:
         self.winner: Optional[Team] = None
         self.result_text: str = ""
         
-        # These will be populated during simulation
+        # Innings tracking
+        self.innings1 = InningsData()
+        self.innings2 = InningsData()
+        
+        # Current match state
+        self.current_batsman_1: Optional[Player] = None
+        self.current_batsman_2: Optional[Player] = None
+        self.current_bowler: Optional[Player] = None
+        self.player_of_match: Optional[Player] = None
+        
+        # Legacy fields for compatibility
         self.team_a_score: int = 0
         self.team_a_wickets: int = 0
         self.team_a_overs: float = 0.0
@@ -137,6 +175,88 @@ class Match:
             return 50
         else:  # Test
             return 90  # Typical day's play
+    
+    def generate_scorecard(self) -> str:
+        """
+        Generate a detailed scorecard for the match.
+        
+        Returns:
+            Formatted scorecard string
+        """
+        scorecard = "\n" + "="*70 + "\n"
+        scorecard += f"{'MATCH SCORECARD':^70}\n"
+        scorecard += "="*70 + "\n"
+        scorecard += f"{self.team_a.name} vs {self.team_b.name}\n"
+        scorecard += f"Format: {self.format.value} | Venue: {self.venue}\n"
+        scorecard += "="*70 + "\n\n"
+        
+        if self.toss_winner:
+            scorecard += f"Toss: {self.toss_winner.name} won and elected to {self.elected_to}\n\n"
+        
+        # First Innings
+        scorecard += f"{self.team_a.name} Innings\n"
+        scorecard += "-"*70 + "\n"
+        scorecard += f"Score: {self.innings1.score}/{self.innings1.wickets} "
+        scorecard += f"({self.innings1.overs}.{self.innings1.balls} overs)\n"
+        
+        if self.innings1.batting_scores:
+            scorecard += "\nBatting:\n"
+            scorecard += f"{'Player':<25} {'Runs':<10} {'Balls':<10}\n"
+            scorecard += "-"*70 + "\n"
+            for player_id, runs in sorted(self.innings1.batting_scores.items(), 
+                                         key=lambda x: x[1], reverse=True):
+                balls = self.innings1.batting_balls.get(player_id, 0)
+                scorecard += f"{player_id:<25} {runs:<10} {balls:<10}\n"
+        
+        if self.innings1.bowling_figures:
+            scorecard += "\nBowling:\n"
+            scorecard += f"{'Player':<25} {'Overs':<10} {'Runs':<10} {'Wickets':<10}\n"
+            scorecard += "-"*70 + "\n"
+            for player_id, figures in self.innings1.bowling_figures.items():
+                overs = figures.get('overs', 0)
+                runs = figures.get('runs', 0)
+                wickets = figures.get('wickets', 0)
+                scorecard += f"{player_id:<25} {overs:<10} {runs:<10} {wickets:<10}\n"
+        
+        scorecard += "\n" + "="*70 + "\n\n"
+        
+        # Second Innings (if exists)
+        if self.innings2.score > 0 or self.innings2.wickets > 0:
+            scorecard += f"{self.team_b.name} Innings\n"
+            scorecard += "-"*70 + "\n"
+            scorecard += f"Score: {self.innings2.score}/{self.innings2.wickets} "
+            scorecard += f"({self.innings2.overs}.{self.innings2.balls} overs)\n"
+            
+            if self.innings2.batting_scores:
+                scorecard += "\nBatting:\n"
+                scorecard += f"{'Player':<25} {'Runs':<10} {'Balls':<10}\n"
+                scorecard += "-"*70 + "\n"
+                for player_id, runs in sorted(self.innings2.batting_scores.items(), 
+                                             key=lambda x: x[1], reverse=True):
+                    balls = self.innings2.batting_balls.get(player_id, 0)
+                    scorecard += f"{player_id:<25} {runs:<10} {balls:<10}\n"
+            
+            if self.innings2.bowling_figures:
+                scorecard += "\nBowling:\n"
+                scorecard += f"{'Player':<25} {'Overs':<10} {'Runs':<10} {'Wickets':<10}\n"
+                scorecard += "-"*70 + "\n"
+                for player_id, figures in self.innings2.bowling_figures.items():
+                    overs = figures.get('overs', 0)
+                    runs = figures.get('runs', 0)
+                    wickets = figures.get('wickets', 0)
+                    scorecard += f"{player_id:<25} {overs:<10} {runs:<10} {wickets:<10}\n"
+            
+            scorecard += "\n" + "="*70 + "\n"
+        
+        # Match Result
+        if self.status == MatchStatus.COMPLETED:
+            scorecard += f"\nResult: {self.result_text}\n"
+            if self.player_of_match:
+                scorecard += f"Player of the Match: {self.player_of_match.name}\n"
+        
+        scorecard += "="*70 + "\n"
+        
+        return scorecard
     
     def __repr__(self) -> str:
         """Return string representation of the match."""

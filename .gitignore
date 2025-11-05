@@ -215,5 +215,6 @@ __marimo__/
 # Data files (user-generated data should not be committed)
 data/players/*.csv
 data/teams/*.csv
-data/*.json
 data/*.db
+# Allow sample teams JSON
+!data/sample_teams.json

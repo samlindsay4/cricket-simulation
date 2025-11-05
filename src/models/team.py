@@ -52,7 +52,9 @@ class Team:
         Returns:
             True if player was added, False if roster is full
         """
-        if len(self.players) >= self.max_players:
+        # For playing XI, limit to 11 players
+        playing_xi_limit = 11
+        if len(self.players) >= playing_xi_limit:
             return False
         
         self.players.append(player)
@@ -101,6 +103,71 @@ class Team:
             List of players with the specified role
         """
         return [p for p in self.players if p.role == role]
+    
+    def get_batting_order(self) -> List[Player]:
+        """
+        Get the batting order for the team.
+        
+        Returns batsmen first, then all-rounders, then bowlers.
+        Wicket-keepers are placed based on their batting strength (usually middle order).
+        
+        Returns:
+            List of players in batting order
+        """
+        batsmen = [p for p in self.players if p.role == "batsman"]
+        wicket_keepers = [p for p in self.players if p.role == "wicket-keeper"]
+        all_rounders = [p for p in self.players if p.role == "all-rounder"]
+        bowlers = [p for p in self.players if p.role == "bowler"]
+        
+        # Sort batsmen by average (best first)
+        batsmen.sort(key=lambda p: p.batting_stats.average, reverse=True)
+        
+        # Wicket-keepers typically bat in middle order
+        wicket_keepers.sort(key=lambda p: p.batting_stats.average, reverse=True)
+        
+        # All-rounders in middle order
+        all_rounders.sort(key=lambda p: p.batting_stats.average, reverse=True)
+        
+        # Bowlers at the end (sorted by batting ability)
+        bowlers.sort(key=lambda p: p.batting_stats.average, reverse=True)
+        
+        # Combine: top batsmen, WK, all-rounders, remaining batsmen, bowlers
+        batting_order = []
+        
+        # Add top 2-3 batsmen
+        batting_order.extend(batsmen[:3])
+        
+        # Add wicket-keeper(s) in middle order
+        batting_order.extend(wicket_keepers)
+        
+        # Add all-rounders
+        batting_order.extend(all_rounders)
+        
+        # Add remaining batsmen
+        batting_order.extend(batsmen[3:])
+        
+        # Add bowlers
+        batting_order.extend(bowlers)
+        
+        return batting_order
+    
+    def get_bowlers(self) -> List[Player]:
+        """
+        Get all players who can bowl.
+        
+        Returns bowlers first, then all-rounders.
+        
+        Returns:
+            List of players who can bowl
+        """
+        bowlers = [p for p in self.players if p.role == "bowler"]
+        all_rounders = [p for p in self.players if p.role == "all-rounder"]
+        
+        # Sort by bowling average (best first)
+        bowlers.sort(key=lambda p: p.bowling_stats.average if p.bowling_stats.average > 0 else 999)
+        all_rounders.sort(key=lambda p: p.bowling_stats.average if p.bowling_stats.average > 0 else 999)
+        
+        return bowlers + all_rounders
     
     def set_captain(self, player: Player) -> bool:
         """
